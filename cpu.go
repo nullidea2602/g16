@@ -47,8 +47,8 @@ func (cpu *CPU) decode() {
 	case HALT:
 		cpu.halt = true
 		fmt.Printf("Halted after %d cycles.\n", cpu.up)
-	case MOVRR: // RX <- RY
-		rx := cpu.reg[RINS] >> 4
+	// case MOVRR: // RX <- RY
+	// 	rx := cpu.reg[RINS] >> 4
 	default:
 		cpu.halt = true
 		fmt.Printf("Halted after %d cycles due to unrecognized OP: %02X\n", cpu.up, cpu.op)
