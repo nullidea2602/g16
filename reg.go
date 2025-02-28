@@ -20,4 +20,5 @@ const (
 	RPC
 	RSP
 	RF
+	REGISTER_COUNT
 )

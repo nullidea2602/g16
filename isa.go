@@ -1,16 +1,19 @@
 package main
 
+const ( // 3-bit RR memory modes
+	DD  uint16 = iota // Direct-Direct
+	DLI               // Direct(Lower)-Indirect
+	DUI               // Direct(Upper)-Indirect
+	DWI               // Direct(Word)-Indirect&Indirect+1
+)
+
 const ( // 5-bit opcode
 	HALT uint16 = iota
 
-	MOVRR  // RX <- RY
-	MOVRM  // RX <- [RY]
-	MOVRI  // RL(L) <- IMM, ZP address
-	MOVRIU // RL(U) <- IMM
-	MOVMR  // [RX] <- RY(L)
-	MOVMRU // [RX] <- RY(U)
-	MOVMRW // [RX], [RX+1] <- RY
-	MOVMI  // [RL] <- IMM, ASCII
+	MOV   // RX RY flag
+	MOVI  // RL(L) <- IMM, ZP address
+	MOVIU // RL(U) <- IMM
+	MOVIM // [RL] <- IMM, ASCII
 
 	ADD
 	ADDI

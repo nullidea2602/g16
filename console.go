@@ -10,7 +10,7 @@ type Console struct {
 	index  uint8
 }
 
-func (c *Console) step(ram [1 << 16]byte) {
+func (c *Console) step(ram [RAM_SIZE]byte) {
 	if ram[CONSOLE_ADDRESS] == 0 {
 		return
 	}
