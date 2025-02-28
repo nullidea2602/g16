@@ -3,16 +3,14 @@ package main
 const ( // 5-bit opcode
 	HALT uint16 = iota
 
-	// ZeroPage ops?
-
 	MOVRR  // RX <- RY
 	MOVRM  // RX <- [RY]
-	MOVRI  // RL(L) <- IMM
+	MOVRI  // RL(L) <- IMM, ZP address
 	MOVRIU // RL(U) <- IMM
 	MOVMR  // [RX] <- RY(L)
 	MOVMRU // [RX] <- RY(U)
 	MOVMRW // [RX], [RX+1] <- RY
-	MOVMI  // [RL] <- IMM
+	MOVMI  // [RL] <- IMM, ASCII
 
 	ADD
 	ADDI

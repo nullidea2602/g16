@@ -1,40 +1,45 @@
 package main
 
 import (
-	"encoding/binary"
-	"fmt"
+	"log"
+	"os"
+	"time"
 )
 
-func toByte(data []uint16) []byte {
-	byteSlice := make([]byte, len(data)*2)
-	for i, v := range data {
-		binary.LittleEndian.PutUint16(byteSlice[i*2:], v) // Use BigEndian if needed
-	}
-	return byteSlice
-}
-
 func main() {
-	fmt.Printf("Hello, world!\n")
+
+	file, err := os.Create("debug.log")
+	if err != nil {
+		log.Fatalf("failed to create log file: %v", err)
+	}
+	defer file.Close()
+
+	log.SetOutput(file)
+
+	program := []byte{
+		0x00, byte(MOVRR << 3), // MOVRR = 0x01, 0x01<<3 = 8
+	}
+
+	log.Printf("Program: %04X\n", program)
 
 	cpu := CPU{}
+	console := Console{}
 	cpu.reset()
-
-	program := toByte([]uint16{
-		0x0000,
-	})
-
+	var hertz uint16 = 1
 	copy(cpu.ram[0x0200:], program)
-}
+	log.Printf("RAM 0x0200: %02X\n", cpu.ram[0x0200])
+	log.Printf("RAM 0x0201: %02X\n", cpu.ram[0x0201])
+	cpu.init()
+	for !cpu.halt {
+		time.Sleep(time.Second / time.Duration(hertz))
+		cpu.step()
+		console.step(cpu.ram)
+	}
 
-type CPU struct {
-	ram  [1 << 16]byte
-	reg  [16]uint16
-	halt bool
-}
-
-func (cpu *CPU) reset() {
-	cpu.reg[RSP] = 0x01FF // Initialize the Stack Pointer
-	cpu.reg[RPC] = 0x0200 // Start execution at address 0x0200
-	cpu.reg[RF] = 0x0000  // Clear all flags, TODO: Wipe ram and reg
-	cpu.halt = false
+	for i, v := range cpu.reg {
+		log.Printf("R%d: %04X\t", i, v)
+		if (i+1)%4 == 0 {
+			log.Printf("\n")
+		}
+	}
 }
