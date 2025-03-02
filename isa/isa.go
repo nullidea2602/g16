@@ -7,7 +7,6 @@ const ( // 3-bit RR memory modes
 	DWI               // Direct(Word)-Indirect&Indirect+1
 	II                // Indirect-Indirect
 	IDL               // Indirect-Direct(Lower)
-
 )
 
 const ( // 5-bit opcode

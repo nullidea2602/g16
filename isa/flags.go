@@ -1,4 +1,4 @@
-package main
+package isa
 
 const (
 	FSIGN     uint16 = 1 << 15 // Sign flag
