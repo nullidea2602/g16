@@ -1,6 +1,11 @@
 package main
 
 import (
+	"code/g16/assembler"
+	"code/g16/console"
+	"code/g16/cpu"
+	. "code/g16/isa"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -17,35 +22,41 @@ func main() {
 	log.SetOutput(file)
 
 	source := `
-	mov r1, =data ; set r1 to address of first character
-	mov r2, #d12 ; number of characters
-	mov r3, =loop
-	loop:
+	; below is interpreted as movio, meaning mov immediate offset address
+	; intermediate is movio, $rl, 0x00
+	; cpu executes as mov $rl, ProgramCounter+0x00
+	; this keeps opcode, register, and address within 16 bits
+	; mov $rx, =label
+
+	mov $r1, =data ; set r1 to address of first character
+	mov $r2, #d12 ; number of characters
+	mov $r3, =loop ; set r3 to address of loop
+	loop: ; address 6
 	mov @r0, @r1 ; copy character to stdout @0x0000
-	inc r1 ; advance r1 to address of next character
-	dec r2 ; count down
-	jnz r3, @r2 ; goto loop
+	inc $r1 ; advance r1 to address of next character
+	dec $r2 ; count down
+	jnz $r3, @r2 ; goto loop
 	halt
-	data:
+	data: ; address 16
 	#aHello_World!
 	`
 	log.Println(source)
 
-	tokens := Tokenize(source)
+	tokens := assembler.Tokenize(source)
 
 	for _, t := range tokens {
-		log.Printf("%s: %s\n", t.Type, t.Value)
+		fmt.Printf("%s: %s\n", t.Type, t.Value)
 	}
 
 	assembly := []uint16{
-		MOVIO, R1, 16, // =data
-		MOVI, R2, 12, // number of characters
-		MOVIO, R3, 6, // =loop,
+		MOVIO, cpu.R1, 16, // =data
+		MOVI, cpu.R2, 12, // number of characters
+		MOVIO, cpu.R3, 6, // =loop,
 		//loop:
-		MOV, II, R0, R1, // II
-		INC, R1,
-		DEC, R2,
-		JNZ, R3, R2,
+		MOV, II, cpu.R0, cpu.R1,
+		INC, cpu.R1,
+		DEC, cpu.R2,
+		JNZ, cpu.R3, cpu.R2,
 		HALT,
 		//data:
 		//#aHello_World!
@@ -56,13 +67,13 @@ func main() {
 	log.Println(assembly)
 
 	program := []byte{ // Little-endian
-		16, byte(MOVIO<<3) | byte(R1),
-		12, byte(MOVI<<3) | byte(R2),
-		6, byte(MOVIO<<3) | byte(R3),
-		byte(R0<<4) | byte(R1), byte(MOV<<3) | byte(II),
-		byte(R1), byte(INC << 3),
-		byte(R2), byte(DEC << 3),
-		byte(R3<<4) | byte(R2), byte(JNZ << 3),
+		16, byte(MOVIO<<3) | byte(cpu.R1),
+		12, byte(MOVI<<3) | byte(cpu.R2),
+		6, byte(MOVIO<<3) | byte(cpu.R3),
+		byte(cpu.R0<<4) | byte(cpu.R1), byte(MOV<<3) | byte(II),
+		byte(cpu.R1), byte(INC << 3),
+		byte(cpu.R2), byte(DEC << 3),
+		byte(cpu.R3<<4) | byte(cpu.R2), byte(JNZ << 3),
 		0, byte(HALT << 3),
 		byte('H'), byte('e'), byte('l'), byte('l'), byte('o'), byte('_'),
 		byte('W'), byte('o'), byte('r'), byte('l'), byte('d'), byte('!'),
@@ -70,21 +81,18 @@ func main() {
 
 	log.Printf("Program: %04X\n", program)
 
-	cpu := CPU{}
-	console := Console{}
-	cpu.reset()
+	cpu := cpu.CPU{}
+	cpu.Reset()
+	cpu.Load(program)
+
+	console := console.Console{}
+
 	var hertz uint16 = 1
-	copy(cpu.ram[PROGRAM_START:], program)
-	for !cpu.halt {
+	for !cpu.Halt {
 		time.Sleep(time.Second / time.Duration(hertz))
-		cpu.step()
-		console.step(cpu.ram)
+		cpu.Step()
+		console.Step(cpu.RAM)
 	}
 
-	for i, v := range cpu.reg {
-		log.Printf("R%d: %04X\t", i, v)
-		if (i+1)%4 == 0 {
-			log.Printf("\n")
-		}
-	}
+	cpu.DumpReg()
 }

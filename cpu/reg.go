@@ -1,4 +1,4 @@
-package main
+package cpu
 
 const (
 	// Lower registers (3-bit)

@@ -1,4 +1,4 @@
-package main
+package isa
 
 const ( // 3-bit RR memory modes
 	DD  uint16 = iota // Direct-Direct

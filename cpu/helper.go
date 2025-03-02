@@ -1,4 +1,4 @@
-package main
+package cpu
 
 func loadWordLittleEndian(ram [RAM_SIZE]byte, addr uint16) uint16 {
 	return uint16(ram[addr]) | (uint16(ram[addr+1]) << HIGHBYTE_OFFSET)

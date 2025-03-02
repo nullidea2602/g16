@@ -1,6 +1,7 @@
-package main
+package cpu
 
 import (
+	. "code/g16/isa"
 	"fmt"
 	"log"
 )
@@ -20,7 +21,7 @@ const R_WIDTH = 4
 const HIGHBYTE_OFFSET = 8
 
 type CPU struct {
-	ram   [RAM_SIZE]byte
+	RAM   [RAM_SIZE]byte
 	reg   [REGISTER_COUNT]uint16
 	op    uint16
 	f     uint16
@@ -30,19 +31,23 @@ type CPU struct {
 	maddr uint16
 	mreg  uint16
 	up    uint64
-	halt  bool
+	Halt  bool
 }
 
-func (cpu *CPU) reset() {
+func (cpu *CPU) Reset() {
 	for i := range cpu.reg {
 		cpu.reg[i] = 0
 	}
 	cpu.reg[RSP] = STACK_TOP     // Initialize the Stack Pointer
 	cpu.reg[RPC] = PROGRAM_START // Start execution at address 0x0200
-	cpu.halt = false
+	cpu.Halt = false
 }
 
-func (cpu *CPU) step() {
+func (cpu *CPU) Load(program []byte) {
+	copy(cpu.RAM[PROGRAM_START:], program)
+}
+
+func (cpu *CPU) Step() {
 	cpu.up++
 	log.Printf("Cycle: %d\n", cpu.up)
 	cpu.fetch()
@@ -52,12 +57,21 @@ func (cpu *CPU) step() {
 	cpu.writeback()
 }
 
+func (cpu *CPU) DumpReg() {
+	for i, v := range cpu.reg {
+		log.Printf("R%d: %04X\t", i, v)
+		if (i+1)%4 == 0 {
+			log.Printf("\n")
+		}
+	}
+}
+
 func (cpu *CPU) fetch() {
 	log.Printf("RPC: %04X\n[RPC]: %02X\n[RPC+1]: %02X\n",
 		cpu.reg[RPC],
-		cpu.ram[cpu.reg[RPC]],
-		cpu.ram[cpu.reg[RPC]+1])
-	cpu.reg[RINS] = loadWordLittleEndian(cpu.ram, cpu.reg[RPC])
+		cpu.RAM[cpu.reg[RPC]],
+		cpu.RAM[cpu.reg[RPC]+1])
+	cpu.reg[RINS] = loadWordLittleEndian(cpu.RAM, cpu.reg[RPC])
 	log.Printf("INS: %04X\n", cpu.reg[RINS])
 	cpu.reg[RPC] += BYTES_PER_WORD
 }
@@ -74,16 +88,16 @@ func (cpu *CPU) decode() {
 		cpu.rx = extract(cpu.reg[RINS], RX_OFFSET, R_WIDTH)
 		cpu.ry = extract(cpu.reg[RINS], RY_OFFSET, R_WIDTH)
 	default:
-		cpu.halt = true
+		cpu.Halt = true
 		fmt.Printf("Halted during decode after %d cycles due to unrecognized OP: %02X\n", cpu.up, cpu.op)
 	}
-	cpu.reg[RINS] = loadWordLittleEndian(cpu.ram, cpu.reg[RPC])
+	cpu.reg[RINS] = loadWordLittleEndian(cpu.RAM, cpu.reg[RPC])
 }
 
 func (cpu *CPU) execute() {
 	switch cpu.op {
 	case HALT:
-		cpu.halt = true
+		cpu.Halt = true
 		fmt.Printf("Halted after %d cycles.\n", cpu.up)
 	case MOV:
 		switch cpu.f {
@@ -102,11 +116,11 @@ func (cpu *CPU) execute() {
 			cpu.mreg = cpu.rx
 			cpu.maddr = cpu.reg[cpu.ry]
 		default:
-			cpu.halt = true
+			cpu.Halt = true
 			fmt.Printf("Halted during execute after %d cycles due to unrecognized FLAG: %02X\n", cpu.up, cpu.f)
 		}
 	default:
-		cpu.halt = true
+		cpu.Halt = true
 		fmt.Printf("Halted during execute after %d cycles due to unrecognized OP: %02X\n", cpu.up, cpu.op)
 	}
 }
@@ -127,11 +141,11 @@ func (cpu *CPU) memoryAccess() {
 	case MOV:
 		switch cpu.mmode {
 		case READ:
-			cpu.reg[cpu.mreg] = (cpu.reg[cpu.mreg] & 0xFF00) | uint16(cpu.ram[cpu.maddr])
+			cpu.reg[cpu.mreg] = (cpu.reg[cpu.mreg] & 0xFF00) | uint16(cpu.RAM[cpu.maddr])
 		case READUPPER:
-			cpu.reg[cpu.mreg] = (cpu.reg[cpu.mreg] & 0x00FF) | (uint16(cpu.ram[cpu.maddr]) << 8)
+			cpu.reg[cpu.mreg] = (cpu.reg[cpu.mreg] & 0x00FF) | (uint16(cpu.RAM[cpu.maddr]) << 8)
 		case READWORD:
-			cpu.reg[cpu.mreg] = loadWordLittleEndian(cpu.ram, cpu.maddr)
+			cpu.reg[cpu.mreg] = loadWordLittleEndian(cpu.RAM, cpu.maddr)
 		}
 	}
 
