@@ -5,6 +5,9 @@ const ( // 3-bit RR memory modes
 	DLI               // Direct(Lower)-Indirect
 	DUI               // Direct(Upper)-Indirect
 	DWI               // Direct(Word)-Indirect&Indirect+1
+	II                // Indirect-Indirect
+	IDL               // Indirect-Direct(Lower)
+
 )
 
 const ( // 5-bit opcode
@@ -13,8 +16,10 @@ const ( // 5-bit opcode
 	MOV   // RX RY flag
 	MOVI  // RL(L) <- IMM, ZP address
 	MOVIU // RL(U) <- IMM
-	MOVIM // [RL] <- IMM, ASCII
+	MOVIO // RL <- RPC + Address Offset
 
+	INC
+	DEC
 	ADD
 	ADDI
 	SUB
