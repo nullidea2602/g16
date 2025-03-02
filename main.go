@@ -38,7 +38,7 @@ func main() {
 	jnz $r3, @r2 ; goto loop
 	halt
 	data: ; address 16
-	#aHello_World!
+	#'Hello World!'
 	`
 	log.Println(source)
 
@@ -60,7 +60,7 @@ func main() {
 		HALT,
 		//data:
 		//#aHello_World!
-		uint16('H'), uint16('e'), uint16('l'), uint16('l'), uint16('o'), uint16('_'),
+		uint16('H'), uint16('e'), uint16('l'), uint16('l'), uint16('o'), uint16(' '),
 		uint16('W'), uint16('o'), uint16('r'), uint16('l'), uint16('d'), uint16('!'),
 	}
 
@@ -75,7 +75,7 @@ func main() {
 		byte(cpu.R2), byte(DEC << 3),
 		byte(cpu.R3<<4) | byte(cpu.R2), byte(JNZ << 3),
 		0, byte(HALT << 3),
-		byte('H'), byte('e'), byte('l'), byte('l'), byte('o'), byte('_'),
+		byte('H'), byte('e'), byte('l'), byte('l'), byte('o'), byte(' '),
 		byte('W'), byte('o'), byte('r'), byte('l'), byte('d'), byte('!'),
 	}
 
