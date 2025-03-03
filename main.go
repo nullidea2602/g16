@@ -2,74 +2,17 @@ package main
 
 import (
 	"code/g16/assembler"
+	"code/g16/bus"
 	"code/g16/console"
 	"code/g16/cpu"
 	. "code/g16/isa"
 	"code/g16/pins"
-	"encoding/binary"
+	"code/g16/ram"
+	"fmt"
 	"log"
 	"os"
 	"time"
 )
-
-const RAM_SIZE = 1 << 16
-const ROM_START = 0xF000 // ROM mapping starts here
-
-type RAM struct {
-	Pins   *pins.Pins
-	memory [RAM_SIZE]byte
-}
-
-func (ram *RAM) init(program []byte) {
-	log.Printf("Program: %04X\n", program)
-	copy(ram.memory[ROM_START:], program)
-	log.Printf("Loaded program into RAM at %04X\n", ROM_START)
-}
-
-func (ram *RAM) ProcessCycle() {
-	if ram.Pins.Valid {
-		addr := ram.Pins.Address
-
-		if ram.Pins.RW { // Read
-			ram.Pins.Data = binary.LittleEndian.Uint16(ram.memory[addr : addr+2])
-		} else { // Write
-			binary.LittleEndian.PutUint16(ram.memory[addr:addr+2], ram.Pins.Data)
-		}
-	}
-}
-
-type Bus struct {
-	CPU_Pins     *pins.Pins
-	RAM_Pins     *pins.Pins
-	CONSOLE_Pins *pins.Pins
-}
-
-func (bus *Bus) PropagateCycle() {
-	if bus.CPU_Pins.Valid {
-		bus.RAM_Pins.RW = bus.CPU_Pins.RW // even if writing to console, CPUs read/write intent must be updated
-		if bus.CPU_Pins.Address == console.CONSOLE_ADDRESS {
-			bus.CONSOLE_Pins.Data = bus.CPU_Pins.Data
-			bus.CONSOLE_Pins.Valid = true
-		} else {
-			bus.RAM_Pins.Address = bus.CPU_Pins.Address
-			bus.RAM_Pins.Data = bus.CPU_Pins.Data
-			bus.RAM_Pins.Valid = true
-		}
-	} else {
-		bus.RAM_Pins.Valid = false
-		bus.CONSOLE_Pins.Valid = false
-	}
-}
-
-func (bus *Bus) ReturnCycle() {
-	// If RAM was in read mode and valid, return data to CPU
-	if bus.RAM_Pins.Valid && bus.RAM_Pins.RW {
-		bus.CPU_Pins.Data = bus.RAM_Pins.Data
-		bus.CPU_Pins.Valid = true
-	} else {
-		bus.CPU_Pins.Valid = false
-	}
-}
 
 func main() {
 
@@ -138,9 +81,9 @@ func main() {
 		byte('\n'), 0,
 	}
 
-	bus := Bus{}
+	bus := bus.Bus{}
 	cpu := cpu.CPU{}
-	ram := RAM{}
+	ram := ram.RAM{}
 	console := console.Console{}
 
 	cpu_pins := &pins.Pins{}
@@ -149,7 +92,7 @@ func main() {
 
 	cpu.Reset()
 	cpu.Pins = cpu_pins
-	ram.init(program)
+	ram.Init(program)
 	ram.Pins = ram_pins
 	console.Pins = console_pins
 
