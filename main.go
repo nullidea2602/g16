@@ -39,18 +39,25 @@ func (ram *RAM) ProcessCycle() {
 }
 
 type Bus struct {
-	CPU_Pins *pins.Pins
-	RAM_Pins *pins.Pins
+	CPU_Pins     *pins.Pins
+	RAM_Pins     *pins.Pins
+	CONSOLE_Pins *pins.Pins
 }
 
 func (bus *Bus) PropagateCycle() {
 	if bus.CPU_Pins.Valid {
-		bus.RAM_Pins.Address = bus.CPU_Pins.Address
-		bus.RAM_Pins.Data = bus.CPU_Pins.Data
-		bus.RAM_Pins.RW = bus.CPU_Pins.RW
-		bus.RAM_Pins.Valid = true
+		bus.RAM_Pins.RW = bus.CPU_Pins.RW // even if writing to console, CPUs read/write intent must be updated
+		if bus.CPU_Pins.Address == console.CONSOLE_ADDRESS {
+			bus.CONSOLE_Pins.Data = bus.CPU_Pins.Data
+			bus.CONSOLE_Pins.Valid = true
+		} else {
+			bus.RAM_Pins.Address = bus.CPU_Pins.Address
+			bus.RAM_Pins.Data = bus.CPU_Pins.Data
+			bus.RAM_Pins.Valid = true
+		}
 	} else {
 		bus.RAM_Pins.Valid = false
+		bus.CONSOLE_Pins.Valid = false
 	}
 }
 
@@ -75,24 +82,18 @@ func main() {
 	log.SetOutput(file)
 
 	source := `
-	; below is interpreted as movio, meaning mov immediate offset address
-	; intermediate is movio, $rl, 0x00
-	; cpu executes as mov $rl, ProgramCounter+0x00
-	; this keeps opcode, register, and address within 16 bits
-	; mov $rx, =label
-
-	mov $r1, =data ; set r1 to address of first character
-	mov $r2, #d13 ; number of characters
-	mov $r3, =loop ; set r3 to address of loop
-	loop: ; address 6
-	mov @r0, @r1 ; copy character to stdout @0x0000
-	inc $r1 ; advance r1 to address of next character
-	inc $r1 ; +2 for next word
-	dec $r2 ; count down
-	jnz $r3, @r2 ; goto loop
-	halt
-	data: ; address 18
-	#'Hello World!'
+	mov $r1, =data ; 00: set r1 to address of data (PC:00 + OFFSET:18)
+	mov $r2, #d13  ; 02: set r2 to length of data
+	mov $r3, =loop ; 04: set r3 to address of loop (PC:04 + OFFSET:02)
+	loop:          ; 06 (not an instruction)
+	mov @r0, @r1   ; 06 copy character to stdout @0x0000
+	inc $r1        ; 08 advance r1 to address of next character
+	inc $r1        ; 10 +2 for next word
+	dec $r2        ; 12 count down
+	jnz $r3, @r2   ; 14 goto loop
+	halt           ; 16 halt
+	data:          ; 18 (not an instruction)
+	#'Hello World!\n'
 	`
 	log.Println(source)
 
@@ -102,7 +103,7 @@ func main() {
 		log.Printf("%s: %s\n", t.Type, t.Value)
 	}
 
-	assembly := []uint16{
+	intermediate := []uint16{
 		MOVIO, cpu.R1, 18, // =data
 		MOVI, cpu.R2, 13, // number of characters
 		MOVIO, cpu.R3, 2, // =loop,
@@ -120,7 +121,7 @@ func main() {
 		uint16('\n'),
 	}
 
-	log.Println(assembly)
+	log.Println(intermediate)
 
 	program := []byte{ // Little-endian
 		18, byte(MOVIO<<3) | byte(cpu.R1),
@@ -137,21 +138,24 @@ func main() {
 		byte('\n'), 0,
 	}
 
-	cpu := cpu.CPU{}
 	bus := Bus{}
+	cpu := cpu.CPU{}
 	ram := RAM{}
 	console := console.Console{}
 
 	cpu_pins := &pins.Pins{}
 	ram_pins := &pins.Pins{}
+	console_pins := &pins.Pins{}
 
 	cpu.Reset()
 	cpu.Pins = cpu_pins
 	ram.init(program)
 	ram.Pins = ram_pins
+	console.Pins = console_pins
 
 	bus.CPU_Pins = cpu_pins
 	bus.RAM_Pins = ram_pins
+	bus.CONSOLE_Pins = console_pins
 
 	var hertz uint16 = 100
 	clk := false
@@ -164,10 +168,10 @@ func main() {
 			bus.PropagateCycle()
 		} else {
 			ram.ProcessCycle()
+			console.ProcessCycle()
 			bus.ReturnCycle()
 			cpu.CompleteCycle()
 		}
-		console.Step(&ram.memory)
 	}
 
 	cpu.DumpReg()
