@@ -1,11 +1,10 @@
 package console
 
 import (
-	"code/g16/cpu"
 	"fmt"
 )
 
-const CONSOLE_ADDRESS = 0xFF
+const CONSOLE_ADDRESS = 0x00
 const CONSOLE_BUFFER_SIZE = 0x3F
 
 type Console struct {
@@ -13,7 +12,7 @@ type Console struct {
 	index  uint8
 }
 
-func (c *Console) Step(ram [cpu.RAM_SIZE]byte) {
+func (c *Console) Step(ram *[1 << 16]byte) {
 	if ram[CONSOLE_ADDRESS] == 0 {
 		return
 	}
